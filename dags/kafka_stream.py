@@ -38,17 +38,17 @@ def format_data(res):
 
 def stream_data():
     import json
-    # from kafka import KafkaProducer
+    from kafka import KafkaProducer
     import time
     import logging
 
     res = get_data()
     res = format_data(res)
 
-    # indent : 들여쓰기 옵션
-    print(json.dumps(res, indent=3))
 
-    # producer = KafkaProducer(bootstrap_servers=['broker:29092'], max_block_ms=5000)
+    producer = KafkaProducer(bootstrap_servers=['localhost:9092'], max_block_ms=5000)
+    producer.send('users_created', json.dumps(res).encode('utf-8'))
+
     # curr_time = time.time()
 
     # while True:
