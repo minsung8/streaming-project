@@ -101,7 +101,9 @@ services:
   webserver:
     image: apache/airflow:2.6.0-python3.9
     command: webserver
-    entrypoint: ['/opt/airflow/script/entrypoint.sh']
+    # entrypoint: ['/opt/airflow/script/entrypoint.sh']
+    entrypoint: sh -c "chmod +x /opt/airflow/script/entrypoint.sh && /opt/airflow/script/entrypoint.sh"
+
     depends_on:
       - postgres
     environment:
@@ -116,7 +118,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
-      - ~/Users/kim.minsung/side-project/requirements.txt:/opt/airflow/requirements.txt
+      - /Users/kim.minsung/side-project/requirements.txt:/opt/airflow/requirements.txt
     ports:
       - "8080:8080"
     healthcheck:
@@ -135,13 +137,13 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
-      - ~/Users/kim.minsung/side-project/requirements.txt:/opt/airflow/requirements.txt
+      - /Users/kim.minsung/side-project/requirements.txt:/opt/airflow/requirements.txt
     environment:
       - LOAD_EX=n
       - EXECUTOR=Sequential
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
       - AIRFLOW_WEBSERVER_SECRET_KEY=this_is_a_very_secured_key
-    command: bash -c "pip install -r ~/Users/kim.minsung/side-project/requirements.txt && airflow db upgrade && airflow scheduler"
+    command: bash -c "pip install -r /opt/airflow/requirements.txt && airflow db upgrade && airflow scheduler"
     networks:
       - confluent
 
