@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
   zookeeper:
@@ -118,7 +118,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
-      - /Users/kim.minsung/side-project/requirements.txt:/opt/airflow/requirements.txt
+      - /Users/kim.minsung/streaming-project/requirements.txt:/opt/airflow/requirements.txt
     ports:
       - "8080:8080"
     healthcheck:
@@ -137,7 +137,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./script/entrypoint.sh:/opt/airflow/script/entrypoint.sh
-      - /Users/kim.minsung/side-project/requirements.txt:/opt/airflow/requirements.txt
+      - /Users/kim.minsung/streaming-project/requirements.txt:/opt/airflow/requirements.txt
     environment:
       - LOAD_EX=n
       - EXECUTOR=Sequential
@@ -163,6 +163,8 @@ services:
   spark-master:
     image: bitnami/spark:latest
     command: bin/spark-class org.apache.spark.deploy.master.Master
+    depends_on:
+      - cassandra
     ports:
       - "9090:8080"
       - "7077:7077"
@@ -173,15 +175,18 @@ services:
     command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     depends_on:
       - spark-master
+      - cassandra
     environment:
       SPARK_MODE: worker
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 1g
       SPARK_MASTER_URL: spark://spark-master:7077
+      SPARK_LOCAL_IP: "127.0.0.1"
+      SPARK_PUBLIC_DNS: "spark-worker"
     networks:
       - confluent
 
-  cassandra_db:
+  cassandra:
     image: cassandra:latest
     container_name: cassandra
     hostname: cassandra
