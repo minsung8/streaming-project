@@ -8,7 +8,7 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 
 
 
-
+# Cassandra에 keyspace를 생성합니다. 이미 존재하는 경우 생성을 건너뜁니다.
 def create_keyspace(session):
     session.execute("""
         CREATE KEYSPACE IF NOT EXISTS spark_streams
@@ -18,6 +18,7 @@ def create_keyspace(session):
     print("Keyspace created successfully!")
 
 
+# Cassandra에 테이블을 생성합니다. 이미 존재하는 경우 생성을 건너뜁니다.
 def create_table(session):
     session.execute("""
     CREATE TABLE IF NOT EXISTS spark_streams.created_users (
@@ -38,6 +39,7 @@ def create_table(session):
     print("Table created successfully!")
 
 
+# Cassandra 테이블에 데이터를 삽입합니다.
 def insert_data(session, **kwargs):
     print("inserting data...")
 
@@ -67,6 +69,7 @@ def insert_data(session, **kwargs):
         logging.error(f'could not insert data due to {e}')
 
 
+# Spark 세션을 생성합니다.
 def create_spark_connection():
     s_conn = None
 
@@ -92,6 +95,7 @@ def create_spark_connection():
     return s_conn
 
 
+# Kafka 스트림에 연결합니다.
 def connect_to_kafka(spark_conn):
     spark_df = None
     try:
@@ -109,9 +113,9 @@ def connect_to_kafka(spark_conn):
     return spark_df
 
 
+# Cassandra 클러스터에 연결합니다.
 def create_cassandra_connection():
     try:
-        # connecting to the cassandra cluster
         cluster = Cluster(['127.0.0.1'])
 
         cas_session = cluster.connect()
@@ -122,21 +126,8 @@ def create_cassandra_connection():
         return None
 
 
+ # Kafka에서 읽은 데이터에서 필요한 필드를 선택합니다.
 def create_selection_df_from_kafka(spark_df):
-# # {
-#   "id": "cd507936-aa70-4e4e-b554-e4e5336db3ae",
-#   "first_name": "Nalan",
-#   "last_name": "Köybaşı",
-#   "gender": "female",
-#   "address": "7848 Istiklal Cd, Ardahan, Nevşehir, Turkey",
-#   "post_code": 21401,
-#   "email": "nalan.koybasi@example.com",
-#   "username": "orangewolf884",
-#   "dob": "1959-10-31T18:49:58.429Z",
-#   "registered_date": "2018-07-22T05:00:21.150Z",
-#   "phone": "(710)-337-0128",
-#   "picture": "https://randomuser.me/api/portraits/med/women/53.jpg"
-# }
     schema = StructType([
         StructField("id", StringType(), False),
         StructField("first_name", StringType(), False),
@@ -151,36 +142,34 @@ def create_selection_df_from_kafka(spark_df):
         StructField("picture", StringType(), False)
     ])
 
+    # Kafka 메시지의 value를 JSON으로 변환하고 필요한 필드를 선택합니다.
     sel = spark_df.selectExpr("CAST(value AS STRING)") \
         .select(from_json(col('value'), schema).alias('data')).select("data.*")
-    print('sel :')
-    print(sel)
 
     return sel
 
 
 if __name__ == "__main__":
-    # create spark connection
+    # Spark 연결 생성
     spark_conn = create_spark_connection()
     if spark_conn is not None:
         spark_df = connect_to_kafka(spark_conn)
-        print("spark_df :")
-        print(spark_df)
         selection_df = create_selection_df_from_kafka(spark_df)
         session = create_cassandra_connection()
-        print('create_cassandra_connection :')
-        print(session)
+
         if session is not None:
+            # Cassandra에 keyspace와 테이블을 생성합니다.
             create_keyspace(session)
             create_table(session)
 
             print("Streaming is being started...")
 
-            print('start1')
+             # 데이터를 Cassandra 테이블에 스트리밍합니다.
             streaming_query = (selection_df.writeStream.format("org.apache.spark.sql.cassandra")
                                .option('checkpointLocation', '/tmp/checkpoint')
                                .option('keyspace', 'spark_streams')
                                .option('table', 'created_users')
                                .start())
-            
+
+            # 스트리밍이 종료될 때까지 대기합니다.
             streaming_query.awaitTermination()
