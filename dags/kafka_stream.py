@@ -13,7 +13,7 @@ def get_data():
     import requests
 
     # randomuser.me API를 호출하여 사용자 데이터를 가져옵니다.
-    res = requests.get("https://randomuser.me/api/")
+    res = requests.get("    ")
     res = res.json()
     res = res['results'][0] # 결과에서 첫 번째 사용자 데이터를 가져옵니다.
 
